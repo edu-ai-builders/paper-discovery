@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paper Discovery Canvas</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Space+Mono:wght@400;700&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #f5f0e8;
+    --ink: #1a1410;
+    --ink-light: #3d3530;
+    --ink-faint: #8a7f78;
+    --accent: #c84b2f;
+    --accent-warm: #e8a030;
+    --green: #2d7a4f;
+    --shadow: 3px 3px 0px var(--ink);
+    --shadow-lg: 5px 5px 0px var(--ink);
+    --border: 1.5px solid var(--ink);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background-color: var(--cream);
+    background-image: radial-gradient(circle, var(--ink) 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-attachment: fixed;
+    font-family: 'Noto Sans SC', sans-serif;
+    color: var(--ink);
+    min-height: 100vh;
+    padding: 32px 24px 80px;
+  }
+
+  /* HEADER */
+  .header { max-width: 860px; margin: 0 auto 24px; display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; }
+  .header-left h1 { font-family: 'Caveat', cursive; font-size: 2.8rem; font-weight: 700; line-height: 1; letter-spacing: -1px; }
+  .header-left h1 span { color: var(--accent); }
+  .header-left p { font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--ink-faint); margin-top: 6px; letter-spacing: 0.05em; }
+  .badge { font-family: 'Space Mono', monospace; font-size: 0.62rem; background: var(--ink); color: var(--cream); padding: 4px 10px; border-radius: 2px; letter-spacing: 0.08em; white-space: nowrap; }
+
+  /* HOW TO USE */
+  .how-to-use { max-width: 860px; margin: 0 auto 28px; border: var(--border); box-shadow: var(--shadow); background: var(--cream); overflow: hidden; }
+  .how-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px; background: var(--ink); color: var(--cream); cursor: pointer; user-select: none; }
+  .how-header span { font-family: 'Space Mono', monospace; font-size: 0.65rem; letter-spacing: 0.1em; }
+  .how-toggle { font-family: 'Space Mono', monospace; font-size: 0.75rem; transition: transform 0.2s; }
+  .how-body { display: grid; grid-template-columns: repeat(3, 1fr); border-top: var(--border); max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+  .how-body.open { max-height: 320px; }
+  .how-item { padding: 16px 18px; border-right: var(--border); }
+  .how-item:last-child { border-right: none; }
+  .how-num { font-family: 'Caveat', cursive; font-size: 2rem; font-weight: 700; color: var(--accent); line-height: 1; margin-bottom: 6px; }
+  .how-title { font-family: 'Space Mono', monospace; font-size: 0.63rem; font-weight: 700; letter-spacing: 0.06em; margin-bottom: 8px; }
+  .how-desc { font-size: 0.74rem; color: var(--ink-light); line-height: 1.6; }
+  .how-desc code { font-family: 'Space Mono', monospace; font-size: 0.63rem; background: rgba(26,20,16,0.08); padding: 1px 5px; }
+  .how-desc a { color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent); font-size: 0.72rem; }
+  .how-tag { display: inline-block; font-family: 'Space Mono', monospace; font-size: 0.57rem; border: 1px solid currentColor; padding: 2px 7px; margin-top: 10px; letter-spacing: 0.04em; }
+  .tag-green { color: var(--green); }
+  .tag-warm { color: var(--accent-warm); }
+  .tag-accent { color: var(--accent); }
+
+  /* API KEY */
+  .apikey-section { max-width: 860px; margin: 0 auto 24px; border: var(--border); box-shadow: var(--shadow); padding: 16px 20px; background: var(--cream); display: none; }
+  .apikey-section.visible { display: block; }
+  .apikey-label { font-family: 'Space Mono', monospace; font-size: 0.62rem; letter-spacing: 0.1em; color: var(--ink-faint); text-transform: uppercase; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block; flex-shrink: 0; }
+  .dot.connected { background: var(--green); }
+  .apikey-row { display: flex; gap: 10px; align-items: center; }
+  .apikey-input { flex: 1; border: var(--border); background: transparent; padding: 9px 14px; font-family: 'Space Mono', monospace; font-size: 0.72rem; color: var(--ink); outline: none; }
+  .apikey-input:focus { box-shadow: var(--shadow); }
+  .apikey-input::placeholder { color: var(--ink-faint); font-size: 0.7rem; font-family: 'Noto Sans SC', sans-serif; letter-spacing: 0; }
+  .btn-connect { font-family: 'Space Mono', monospace; font-size: 0.62rem; letter-spacing: 0.06em; border: var(--border); padding: 9px 16px; cursor: pointer; background: var(--ink); color: var(--cream); box-shadow: var(--shadow); transition: all 0.1s; white-space: nowrap; }
+  .btn-connect:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--accent); }
+  .apikey-hint { font-size: 0.68rem; color: var(--ink-faint); margin-top: 8px; line-height: 1.5; }
+  .apikey-hint a { color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent); }
+
+  /* CANVAS */
+  .canvas { max-width: 860px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .card { background: var(--cream); border: var(--border); box-shadow: var(--shadow); padding: 24px; }
+  .card-full { grid-column: 1 / -1; }
+  .card-label { font-family: 'Space Mono', monospace; font-size: 0.6rem; letter-spacing: 0.12em; color: var(--ink-faint); text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .card-label::after { content: ''; flex: 1; height: 1px; background: var(--ink-faint); opacity: 0.3; }
+  .card-title { font-family: 'Caveat', cursive; font-size: 1.35rem; font-weight: 600; margin-bottom: 16px; }
+
+  /* CHIPS */
+  .role-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+  .intent-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+  .type-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .role-chip, .intent-chip, .type-chip {
+    border: var(--border); padding: 8px 8px; font-size: 0.73rem;
+    cursor: pointer; background: transparent; color: var(--ink);
+    font-family: 'Noto Sans SC', sans-serif; transition: all 0.1s; text-align: center;
+  }
+  .type-chip { text-align: left; line-height: 1.4; padding: 8px 10px; }
+  .type-chip small { opacity: 0.5; font-size: 0.6rem; display: block; }
+  .role-chip:hover, .intent-chip:hover, .type-chip:hover { background: var(--ink); color: var(--cream); }
+  .role-chip.active { background: var(--ink); color: var(--cream); box-shadow: var(--shadow); }
+  .intent-chip.active { background: var(--accent); color: var(--cream); border-color: var(--accent); box-shadow: 2px 2px 0 var(--ink); }
+  .type-chip.active { background: var(--accent-warm); color: var(--ink); box-shadow: 2px 2px 0 var(--ink); }
+
+  textarea, .followup-input {
+    width: 100%; border: var(--border); background: transparent; padding: 12px;
+    font-family: 'Noto Sans SC', sans-serif; font-size: 0.85rem; color: var(--ink);
+    outline: none; line-height: 1.6; transition: box-shadow 0.15s;
+  }
+  textarea { resize: none; }
+  textarea:focus, .followup-input:focus { box-shadow: var(--shadow); }
+  textarea::placeholder, .followup-input::placeholder { color: var(--ink-faint); }
+
+  .mode-toggle { display: flex; gap: 8px; }
+  .mode-btn { font-family: 'Space Mono', monospace; font-size: 0.6rem; letter-spacing: 0.08em; border: var(--border); padding: 6px 12px; cursor: pointer; background: transparent; color: var(--ink-faint); transition: all 0.1s; }
+  .mode-btn.active { background: var(--ink); color: var(--cream); }
+
+  .submit-area { grid-column: 1 / -1; display: flex; align-items: center; gap: 16px; }
+  .btn-discover { font-family: 'Caveat', cursive; font-size: 1.3rem; font-weight: 700; background: var(--ink); color: var(--cream); border: var(--border); padding: 12px 32px; cursor: pointer; box-shadow: var(--shadow-lg); transition: all 0.1s; letter-spacing: 0.02em; }
+  .btn-discover:hover { transform: translate(-2px,-2px); box-shadow: 7px 7px 0 var(--accent); }
+  .btn-discover:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--ink); }
+  .btn-discover:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: var(--shadow-lg); }
+
+  .loading-state { display: none; align-items: center; gap: 12px; padding: 24px 28px; border: var(--border); box-shadow: var(--shadow); }
+  .loading-state.visible { display: flex; }
+  .loading-dots { display: flex; gap: 5px; }
+  .loading-dots span { width: 7px; height: 7px; background: var(--ink); border-radius: 50%; animation: bounce 1.2s infinite; }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0);opacity:0.4} 40%{transform:translateY(-6px);opacity:1} }
+  .loading-text { font-family: 'Space Mono', monospace; font-size: 0.72rem; color: var(--ink-faint); letter-spacing: 0.05em; }
+
+  .output-section { grid-column: 1 / -1; display: none; }
+  .output-section.visible { display: block; }
+  .output-card { background: var(--cream); border: var(--border); box-shadow: var(--shadow-lg); padding: 28px; position: relative; }
+  .output-card::before { content:''; position:absolute; top:0;left:0;right:0; height:3px; background:var(--accent); }
+  .output-scroll { max-height: 600px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--ink) transparent; }
+  .output-content { font-size: 0.85rem; line-height: 1.8; color: var(--ink-light); white-space: pre-wrap; font-family: 'Noto Sans SC', sans-serif; }
+  .output-content .section-header { font-family:'Caveat',cursive; font-size:1.15rem; font-weight:700; color:var(--ink); margin:20px 0 8px; padding-bottom:4px; border-bottom:1.5px solid var(--ink); display:block; }
+  .output-content .paper-title { font-family:'Space Mono',monospace; font-size:0.77rem; font-weight:700; color:var(--ink); background:rgba(200,75,47,0.09); padding:2px 6px; }
+  .output-content .keyword-tag { display:inline-block; border:1px solid var(--ink); padding:2px 8px; font-family:'Space Mono',monospace; font-size:0.63rem; margin:2px 3px 2px 0; }
+  .output-content a { color:var(--accent); text-decoration:none; font-family:'Space Mono',monospace; font-size:0.7rem; border-bottom:1px dashed var(--accent); }
+  .output-content a:hover { border-bottom-style:solid; }
+
+  .conversation-area { margin-top: 20px; display: none; }
+  .conversation-area.visible { display: block; }
+  .follow-up-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .followup-chip { font-family:'Space Mono',monospace; font-size:0.62rem; border:var(--border); padding:6px 12px; cursor:pointer; background:transparent; color:var(--ink); transition:all 0.1s; letter-spacing:0.04em; }
+  .followup-chip:hover { background:var(--ink); color:var(--cream); }
+  .followup-input-row { display:flex; gap:10px; margin-top:12px; }
+  .followup-input { flex:1; padding:10px 14px; }
+  .btn-send { font-family:'Space Mono',monospace; font-size:0.65rem; background:var(--ink); color:var(--cream); border:var(--border); padding:10px 18px; cursor:pointer; box-shadow:var(--shadow); transition:all 0.1s; letter-spacing:0.05em; white-space:nowrap; }
+  .btn-send:hover { transform:translate(-1px,-1px); box-shadow:4px 4px 0 var(--accent); }
+  .btn-send:disabled { opacity:0.5; cursor:not-allowed; transform:none; }
+
+  .divider { border:none; border-top:1.5px dashed var(--ink-faint); opacity:0.4; margin:20px 0; }
+  .footer-note { font-family:'Space Mono',monospace; font-size:0.6rem; color:var(--ink-faint); text-align:center; margin-top:40px; max-width:860px; margin-left:auto; margin-right:auto; letter-spacing:0.05em; }
+
+  @media (max-width:600px) {
+    .canvas { grid-template-columns:1fr; }
+    .card-full,.output-section,.submit-area { grid-column:1; }
+    .role-grid { grid-template-columns:repeat(2,1fr); }
+    .header { flex-direction:column; align-items:flex-start; }
+    body { padding:20px 16px 60px; }
+    .how-body { grid-template-columns:1fr; max-height:none; }
+    .how-body.open { max-height:900px; }
+    .how-item { border-right:none; border-bottom:var(--border); }
+    .how-item:last-child { border-bottom:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <h1>Paper Discovery <span>Canvas</span></h1>
+    <p>edu-ai-builders · skill-paper-discovery v0.1</p>
+  </div>
+  <span class="badge">AI POWERED</span>
+</div>
+
+<!-- HOW TO USE -->
+<div class="how-to-use">
+  <div class="how-header" onclick="toggleHow()">
+    <span>▸ HOW TO USE THIS CANVAS</span>
+    <span class="how-toggle" id="howIcon">▾</span>
+  </div>
+  <div class="how-body" id="howBody">
+    <div class="how-item">
+      <div class="how-num">①</div>
+      <div class="how-title">CLAUDE.AI ARTIFACT</div>
+      <div class="how-desc">
+        在 claude.ai 里作为 Artifact 运行。<br>
+        平台自动处理 API 认证，<strong>无需填写任何 Key</strong>，直接使用。<br><br>
+        适合：视频 demo、课堂展示。
+      </div>
+      <span class="how-tag tag-green">✓ 零配置 · 推荐展示用</span>
+    </div>
+    <div class="how-item">
+      <div class="how-num">②</div>
+      <div class="how-title">本地文件</div>
+      <div class="how-desc">
+        用浏览器直接打开 <code>.html</code> 文件。<br>
+        在下方填入你的 Anthropic API Key 即可使用。<br>
+        Key 仅存在浏览器内存，不会上传。<br><br>
+        获取 Key：<a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>
+      </div>
+      <span class="how-tag tag-warm">需要 API Key</span>
+    </div>
+    <div class="how-item">
+      <div class="how-num">③</div>
+      <div class="how-title">CLAUDE CODE</div>
+      <div class="how-desc">
+        在 Claude Code 里加载 <code>skill-paper-discovery</code>。<br>
+        Claude Code 执行完整三阶段工作流，<code>scripts/</code> 负责搜索和下载 PDF。<br><br>
+        Canvas 作为可视化展示层。
+      </div>
+      <span class="how-tag tag-accent">完整工作流</span>
+    </div>
+  </div>
+</div>
+
+<!-- API KEY (local mode only) -->
+<div class="apikey-section" id="apikeySection">
+  <div class="apikey-label">
+    <span class="dot" id="keyDot"></span>
+    <span id="keyStatus">本地模式 · 请输入 Anthropic API Key</span>
+  </div>
+  <div class="apikey-row">
+    <input class="apikey-input" id="apikeyInput" type="password"
+           placeholder="sk-ant-api03-…"
+           onkeydown="if(event.key==='Enter') connectKey()">
+    <button class="btn-connect" onclick="connectKey()" id="connectBtn">连接</button>
+  </div>
+  <p class="apikey-hint">
+    Key 仅保存在浏览器内存中，刷新页面后自动清除，不会发送到任何第三方。
+    没有 Key？前往 <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> 获取。
+  </p>
+</div>
+
+<!-- CANVAS -->
+<div class="canvas">
+
+  <div class="card">
+    <div class="card-label">01 · 你是谁</div>
+    <div class="card-title">你的角色</div>
+    <div class="role-grid" id="roleGrid">
+      <button class="role-chip" data-val="老师">👩‍🏫 老师</button>
+      <button class="role-chip" data-val="研究生">🎓 研究生</button>
+      <button class="role-chip" data-val="EdTech Builder">🛠 Builder</button>
+      <button class="role-chip" data-val="产品设计者">📐 产品设计</button>
+      <button class="role-chip" data-val="教育研究者">🔬 研究者</button>
+      <button class="role-chip" data-val="其他">✦ 其他</button>
+    </div>
+    <textarea id="roleContext" rows="2" placeholder="补充说明你现在在做什么（可选）…"></textarea>
+  </div>
+
+  <div class="card">
+    <div class="card-label">02 · 你为什么找论文</div>
+    <div class="card-title">找论文的意图</div>
+    <div class="intent-grid" id="intentGrid">
+      <button class="intent-chip" data-val="入门探索">入门探索</button>
+      <button class="intent-chip" data-val="解决具体问题">解决具体问题</button>
+      <button class="intent-chip" data-val="改进教学设计">改进教学设计</button>
+      <button class="intent-chip" data-val="做产品/工具">做产品/工具</button>
+      <button class="intent-chip" data-val="验证研究假设">验证研究假设</button>
+      <button class="intent-chip" data-val="从已有论文延伸">从已有论文延伸</button>
+    </div>
+  </div>
+
+  <div class="card card-full">
+    <div class="card-label">03 · 你的问题或兴趣</div>
+    <div class="card-title">用你自己的话描述</div>
+    <textarea id="questionInput" rows="4"
+      placeholder="例如：学生用了 AI 反馈之后好像不反思了，有没有相关研究？
+或者：我在做面向初学者的 AI coding tutor，想找相关 paper。
+不需要很学术，怎么想的怎么写…"></textarea>
+  </div>
+
+  <div class="card">
+    <div class="card-label">04 · 你想找哪种论文</div>
+    <div class="card-title">论文类型偏好</div>
+    <div class="type-grid" id="typeGrid">
+      <button class="type-chip" data-val="入门理解型">入门理解型<small>建立概念框架</small></button>
+      <button class="type-chip" data-val="教学设计型">教学设计型<small>可直接参考的设计</small></button>
+      <button class="type-chip" data-val="系统实现型">系统实现型<small>架构和技术方案</small></button>
+      <button class="type-chip" data-val="实证研究型">实证研究型<small>有数据的研究</small></button>
+      <button class="type-chip" data-val="产品启发型">产品启发型<small>可转化为功能</small></button>
+      <button class="type-chip" data-val="综述型">综述型<small>领域全局地图</small></button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">05 · 模式</div>
+    <div class="card-title">发现模式</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div class="mode-toggle" id="modeToggle">
+        <button class="mode-btn active" data-mode="guided">GUIDED</button>
+        <button class="mode-btn" data-mode="quick">QUICK</button>
+        <button class="mode-btn" data-mode="builder">BUILDER</button>
+      </div>
+      <p style="font-size:0.72rem;color:var(--ink-faint);line-height:1.5;" id="modeDesc">
+        完整三阶段：需求澄清 → 关键词翻译 → 论文推荐（附阅读路径）
+      </p>
+    </div>
+  </div>
+
+  <div class="submit-area">
+    <button class="btn-discover" id="discoverBtn" onclick="startDiscovery()">开始论文发现 →</button>
+    <button class="followup-chip" onclick="resetAll()" style="border-color:var(--ink-faint);color:var(--ink-faint);">重置</button>
+  </div>
+
+  <div class="loading-state card-full" id="loadingState">
+    <div class="loading-dots"><span></span><span></span><span></span></div>
+    <span class="loading-text" id="loadingText">正在翻译你的问题…</span>
+  </div>
+
+  <div class="output-section card-full" id="outputSection">
+    <div class="output-card">
+      <div class="card-label">发现结果</div>
+      <div class="output-scroll">
+        <div class="output-content" id="outputContent"></div>
+      </div>
+      <hr class="divider">
+      <div class="conversation-area" id="conversationArea">
+        <div class="card-label" style="margin-bottom:10px;">继续探索</div>
+        <div class="follow-up-row" id="followUpChips"></div>
+        <div class="followup-input-row">
+          <input class="followup-input" id="followupInput"
+                 placeholder="输入追问，例如：/more  /builder  /map  或直接提问…"
+                 onkeydown="if(event.key==='Enter') sendFollowUp()">
+          <button class="btn-send" id="sendBtn" onclick="sendFollowUp()">发送</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="footer-note">edu-ai-builders · 不是帮你搜论文，而是帮你把问题翻译成值得读的论文</p>
+
+<script>
+// ── ENV DETECTION ─────────────────────────────────────────
+// claude.ai artifact env: fetch to api.anthropic.com is auto-proxied, no key needed.
+// Local file: user must supply their own key via the input.
+const isArtifact = (() => {
+  try {
+    const h = window.location.hostname;
+    return h === '' || h.includes('claude.ai') || typeof window.__CLAUDE_ARTIFACT__ !== 'undefined';
+  } catch { return false; }
+})();
+
+let userKey = '';
+
+function initEnv() {
+  if (!isArtifact) document.getElementById('apikeySection').classList.add('visible');
+}
+
+function connectKey() {
+  const val = document.getElementById('apikeyInput').value.trim();
+  if (!val.startsWith('sk-ant-')) {
+    flash('apikeyInput');
+    document.getElementById('keyStatus').textContent = '⚠ Key 格式不对，应以 sk-ant- 开头';
+    return;
+  }
+  userKey = val;
+  document.getElementById('apikeyInput').value = '●'.repeat(24);
+  document.getElementById('apikeyInput').disabled = true;
+  document.getElementById('connectBtn').textContent = '已连接 ✓';
+  document.getElementById('connectBtn').disabled = true;
+  document.getElementById('keyDot').classList.add('connected');
+  document.getElementById('keyStatus').textContent = '已连接 · API Key 就绪';
+}
+
+function flash(id) {
+  const el = document.getElementById(id);
+  el.style.boxShadow = '3px 3px 0 var(--accent)';
+  setTimeout(() => el.style.boxShadow = '', 1000);
+}
+
+// ── STATE ─────────────────────────────────────────────────
+const S = { role:'', roleContext:'', intent:'', question:'', paperType:'', mode:'guided', messages:[] };
+
+// ── HOW TO USE ────────────────────────────────────────────
+let howOpen = false;
+function toggleHow() {
+  howOpen = !howOpen;
+  document.getElementById('howBody').classList.toggle('open', howOpen);
+  document.getElementById('howIcon').textContent = howOpen ? '▴' : '▾';
+}
+
+// ── CHIPS ─────────────────────────────────────────────────
+function chips(gridId, key) {
+  document.getElementById(gridId).querySelectorAll('[data-val]').forEach(b => {
+    b.addEventListener('click', () => {
+      document.getElementById(gridId).querySelectorAll('[data-val]').forEach(x => x.classList.remove('active'));
+      b.classList.toggle('active');
+      S[key] = b.classList.contains('active') ? b.dataset.val : '';
+    });
+  });
+}
+chips('roleGrid','role'); chips('intentGrid','intent'); chips('typeGrid','paperType');
+
+const modeDescs = {
+  guided: '完整三阶段：需求澄清 → 关键词翻译 → 论文推荐（附阅读路径）',
+  quick:  '快速模式：直接给 1-3 篇推荐，每篇一句理由',
+  builder:'Builder 模式：额外输出产品启发、可复用交互模式、是否值得做成功能'
+};
+document.getElementById('modeToggle').querySelectorAll('.mode-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    document.getElementById('modeToggle').querySelectorAll('.mode-btn').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    S.mode = b.dataset.mode;
+    document.getElementById('modeDesc').textContent = modeDescs[S.mode];
+  });
+});
+
+// ── SYSTEM PROMPT ─────────────────────────────────────────
+function sysPrompt() {
+  return `你是一位精通学习科学、教学设计、教育AI产品开发与研究映射的论文发现伙伴。
+帮助用户把问题、兴趣或产品想法，翻译成可检索、可判断、可优先阅读的论文方向。
+
+原则：先理解用户再推荐 / 每次最多3篇 / 每篇必须说明"为什么是这篇" / 不推荐无法确认存在的论文 / 给阅读路径而非清单
+
+用户：角色=${S.role||'未指定'} 意图=${S.intent||'未指定'} 类型偏好=${S.paperType||'未指定'} 模式=${S.mode}
+
+${S.mode==='quick'?'【Quick】直接推荐，每篇一句理由。':''}
+${S.mode==='builder'?'【Builder】每篇额外输出：产品启发、可复用交互模式、是否值得做成功能。':''}
+${S.mode==='guided'?'【Guided】Phase1:简短确认需求(2-3句) Phase2:研究问题翻译卡(含关键词+Google Scholar链接) Phase3:论文推荐卡(3篇+阅读路径A→B→C)':''}
+
+Google Scholar链接格式：https://scholar.google.com/scholar?q=词+词&as_ylo=2019（引号=%22）
+
+输出规范：分区标题用【】/ 论文标题用**【】**/ 关键词用\`反引号\` / Google Scholar链接用→前缀 / 中文为主英文关键词保留 / 结尾附2-3个后续指令提示`;
+}
+
+// ── RENDER ────────────────────────────────────────────────
+function render(t) {
+  return t
+    .replace(/^【(.+?)】/gm,'<span class="section-header">【$1】</span>')
+    .replace(/\*\*【(.+?)】\*\*/g,'<span class="paper-title">【$1】</span>')
+    .replace(/`([^`]+)`/g,'<span class="keyword-tag">$1</span>')
+    .replace(/→\s*(https?:\/\/scholar\.google\.com\/\S+)/g,'→ <a href="$1" target="_blank">🔗 Google Scholar ↗</a>')
+    .replace(/(?<!href=")(https?:\/\/[^\s<"]+)/g,'<a href="$1" target="_blank">$1</a>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n/g,'<br>');
+}
+
+// ── FOLLOW-UP CHIPS ───────────────────────────────────────
+function setupFollowUpChips() {
+  const data = [
+    ['/more · 再找3篇',       '/more 同方向再补充3篇'],
+    ['/map · 关键词地图',     '/map 只输出关键词和搜索地图'],
+    ['/compare · 对比分析',   '/compare 对比刚才推荐的几篇'],
+    ['/adjacent · 相邻方向',  '/adjacent 推荐相邻研究方向'],
+    ['/builder · 产品视角',   '/builder 用产品视角重新分析'],
+  ];
+  const c = document.getElementById('followUpChips');
+  c.innerHTML = '';
+  data.forEach(([label, val]) => {
+    const b = document.createElement('button');
+    b.className = 'followup-chip'; b.textContent = label;
+    b.onclick = () => { document.getElementById('followupInput').value = val; sendFollowUp(); };
+    c.appendChild(b);
+  });
+}
+
+// ── API ───────────────────────────────────────────────────
+async function api(messages) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (!isArtifact && userKey) { headers['x-api-key'] = userKey; headers['anthropic-version'] = '2023-06-01'; }
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST', headers,
+    body: JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:1000, system:sysPrompt(), messages })
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error?.message || `HTTP ${r.status}`);
+  return d.content[0].text;
+}
+
+// ── LOADING ───────────────────────────────────────────────
+const loadMsgs = ['正在翻译你的问题…','在论文世界里找坐标…','筛选值得你读的那几篇…','生成阅读路径…'];
+let loadTimer;
+function startLoad() { let i=0; document.getElementById('loadingText').textContent=loadMsgs[0]; loadTimer=setInterval(()=>{i=(i+1)%loadMsgs.length;document.getElementById('loadingText').textContent=loadMsgs[i];},1800); }
+function stopLoad() { clearInterval(loadTimer); }
+
+// ── DISCOVERY ─────────────────────────────────────────────
+async function startDiscovery() {
+  if (!isArtifact && !userKey) {
+    document.getElementById('apikeySection').classList.add('visible');
+    flash('apikeyInput');
+    document.getElementById('keyStatus').textContent = '⚠ 本地模式需要先填入 API Key';
+    return;
+  }
+  const q = document.getElementById('questionInput').value.trim();
+  if (!q) { flash('questionInput'); return; }
+
+  S.roleContext = document.getElementById('roleContext').value.trim();
+  S.messages = [{ role:'user', content:`角色：${S.role||'未指定'}${S.roleContext?`（${S.roleContext}）`:''}\n意图：${S.intent||'未指定'}\n类型偏好：${S.paperType||'未指定'}\n模式：${S.mode}\n\n问题/兴趣：\n${q}` }];
+
+  document.getElementById('discoverBtn').disabled = true;
+  document.getElementById('outputSection').classList.remove('visible');
+  document.getElementById('loadingState').classList.add('visible');
+  startLoad();
+
+  try {
+    const reply = await api(S.messages);
+    S.messages.push({ role:'assistant', content:reply });
+    stopLoad();
+    document.getElementById('loadingState').classList.remove('visible');
+    document.getElementById('outputSection').classList.add('visible');
+    document.getElementById('outputContent').innerHTML = render(reply);
+    setupFollowUpChips();
+    document.getElementById('conversationArea').classList.add('visible');
+    document.getElementById('outputSection').scrollIntoView({ behavior:'smooth', block:'start' });
+  } catch(e) {
+    stopLoad();
+    document.getElementById('loadingState').classList.remove('visible');
+    document.getElementById('outputSection').classList.add('visible');
+    document.getElementById('outputContent').innerHTML = `<span style="color:var(--accent);font-family:'Space Mono',monospace;font-size:0.8rem;">⚠ 出错：${e.message}<br><br>${!isArtifact&&!userKey?'请先填入 API Key。':'请检查网络后重试。'}</span>`;
+    document.getElementById('conversationArea').classList.remove('visible');
+  } finally { document.getElementById('discoverBtn').disabled = false; }
+}
+
+// ── FOLLOW-UP ─────────────────────────────────────────────
+async function sendFollowUp() {
+  const input = document.getElementById('followupInput');
+  const text = input.value.trim(); if (!text) return;
+  input.value = ''; document.getElementById('sendBtn').disabled = true;
+  S.messages.push({ role:'user', content:text });
+
+  const sep = document.createElement('div');
+  sep.innerHTML = `<hr style="border:none;border-top:1px dashed #8a7f78;opacity:0.3;margin:16px 0"><span style="font-family:'Space Mono',monospace;font-size:0.68rem;color:var(--ink-faint);">↳ ${text}</span><br><br>`;
+  document.getElementById('outputContent').appendChild(sep);
+
+  document.getElementById('loadingState').classList.add('visible'); startLoad();
+  try {
+    const reply = await api(S.messages);
+    S.messages.push({ role:'assistant', content:reply });
+    stopLoad(); document.getElementById('loadingState').classList.remove('visible');
+    const block = document.createElement('div');
+    block.className = 'output-content'; block.style.marginTop = '8px';
+    block.innerHTML = render(reply);
+    document.getElementById('outputContent').parentElement.appendChild(block);
+  } catch(e) {
+    stopLoad(); document.getElementById('loadingState').classList.remove('visible');
+    const err = document.createElement('span');
+    err.style.cssText = 'color:var(--accent);font-size:0.75rem;font-family:Space Mono,monospace;';
+    err.textContent = `⚠ 出错：${e.message}`;
+    document.getElementById('outputContent').appendChild(err);
+  } finally {
+    document.getElementById('sendBtn').disabled = false;
+    document.getElementById('outputSection').scrollIntoView({ behavior:'smooth', block:'end' });
+  }
+}
+
+// ── RESET ─────────────────────────────────────────────────
+function resetAll() {
+  Object.assign(S, {role:'',intent:'',question:'',paperType:'',messages:[]});
+  document.querySelectorAll('.role-chip,.intent-chip,.type-chip').forEach(c=>c.classList.remove('active'));
+  ['questionInput','roleContext'].forEach(id=>document.getElementById(id).value='');
+  ['outputSection','loadingState','conversationArea'].forEach(id=>document.getElementById(id).classList.remove('visible'));
+  document.getElementById('outputContent').innerHTML='';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+initEnv();
+</script>
+</body>
+</html>
